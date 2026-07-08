@@ -3,15 +3,28 @@ import trimesh
 from scipy.spatial import Delaunay
 import os
 
-def load_csv(filename):
-   data = np.genfromtxt(filename, delimiter=',', skip_header=1)
-   X = data[:,0]
-   Y = data[:,1]
-   Z = data[:,2]
-   U = data[:,3]
-   return X, Y, Z, U
+def func(x, y):
+    return (x**2-1)*(y**2-1)
 
-X, Y, Z, U = load_csv('./solutions/ripple-D.csv')
+def load_csv(filename):
+  with open(filename, 'r') as f:
+      f.readline()  # skip header
+      lines = f.readlines()
+      X = []
+      Y = []
+      Z = []
+      U = []
+
+      for line in lines:
+         x, y, z, u = map(float, line.strip().split(',')[:4])
+         X.append(x)
+         Y.append(y)
+         Z.append(z)
+         U.append(np.abs(u-func(x, y)))
+  return X, Y, Z, U
+
+X, Y, Z, U = load_csv('./solutions/parab-quad/5.csv')
+
 
 domain = np.vstack((X,Y)).T # pairs of X,Y
 tri = Delaunay(domain)
@@ -40,6 +53,6 @@ vertex_colors = np.vstack((Red, Green, Blue, Alpha)).T
 
 mesh.visual.vertex_colors = vertex_colors
 
-mesh.export(f"./meshes/ripple-D.obj")
+mesh.export(f"./meshes/parab-quad-5.obj")
 
 print('Finished Exporting')

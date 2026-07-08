@@ -41,14 +41,14 @@ class saddle(Surface):
 
 class ripple(Surface):
     def __init__(self,precision=100):
-       u = np.linspace(-np.pi,np.pi,precision)
-       v = np.linspace(-np.pi,np.pi,precision)
+       u = np.linspace(-1,1,precision)
+       v = np.linspace(-1,1,precision)
 
        U,V = np.meshgrid(u,v)
 
        X = U
        Y = V
-       Z = np.sin(np.sqrt(9*U**2 +9*V**2))
+       Z = 1/np.pi * np.sin(2* np.pi * np.sqrt(U**2 + V**2))
 
        super().__init__("ripple",U,V,X,Y,Z)
 
@@ -65,9 +65,24 @@ class mobius(Surface):
 
        super().__init__("mobius",U,V,X,Y,Z)
 
+class paraboloid(Surface):
+    def __init__(self,precision=100):
+       u = np.linspace(-1,1,precision)
+       v = np.linspace(-1,1,precision)
+
+       U,V = np.meshgrid(u,v)
+
+       X = U
+       Y = V
+       Z = U**2 + V**2
+
+       super().__init__("paraboloid",U,V,X,Y,Z)
+
 
 def main():
-   surface = mobius(precision=100)
+   surface = paraboloid(precision=100)
+   surface.export()
+   surface = ripple(precision=100)
    surface.export()
 
 if __name__ == "__main__":

@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 import tqdm
+import time
+
+NEURONS = 32
+EPOCHS = 3000
 
 # 1. Define the Neural Network Architecture
 class PoissonPINN(nn.Module):
@@ -10,13 +14,13 @@ class PoissonPINN(nn.Module):
         # 3 hidden layers with 32 neurons each. 
         # Tanh is crucial because we need continuous second derivatives.
         self.net = nn.Sequential(
-            nn.Linear(2, 32),
+            nn.Linear(2, NEURONS),
             nn.Tanh(),
-            nn.Linear(32, 32),
+            nn.Linear(NEURONS, NEURONS),
             nn.Tanh(),
-            nn.Linear(32, 32),
+            nn.Linear(NEURONS, NEURONS),
             nn.Tanh(),
-            nn.Linear(32, 1)
+            nn.Linear(NEURONS, 1)
         )
         
     def forward(self, x, y):
@@ -46,12 +50,12 @@ def compute_pde_loss(model, x, y):
 
 # 3. Generate Training Data (Domain: [-1, 1] x [-1, 1])
 # Interior collocation points
-N_interior = 1000
+N_interior = 500
 x_int = torch.rand(N_interior, 1) * 2 - 1  # scale to [-1, 1]
 y_int = torch.rand(N_interior, 1) * 2 - 1
 
 # Boundary points where u = 0
-N_boundary = 200
+N_boundary = 100
 # Edges at x = -1 and x = 1
 x_b1 = torch.cat([torch.full((N_boundary, 1), -1.0), torch.full((N_boundary, 1), 1.0)], dim=0)
 y_b1 = torch.rand(2 * N_boundary, 1) * 2 - 1
@@ -69,30 +73,39 @@ u_b_true = torch.zeros_like(x_b)  # u = 0 on the boundary
 model = PoissonPINN()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
 
-print("Starting training...")
-for epoch in range(3001):
-    optimizer.zero_grad()
-    
-    # Compute losses
-    loss_pde = compute_pde_loss(model, x_int, y_int)
-    
-    u_b_pred = model(x_b, y_b)
-    loss_bc = torch.mean((u_b_pred - u_b_true)**2)
-    
-    # Total physics-informed loss (heavily weighting the boundary helps convergence)
-    total_loss = loss_pde + 10.0 * loss_bc
-    
-    total_loss.backward()
-    optimizer.step()
-    
-    if epoch % 500 == 0:
-        print(f"Epoch {epoch:4d} | Total Loss: {total_loss.item():.6f} | PDE Loss: {loss_pde.item():.6f} | BC Loss: {loss_bc.item():.6f}")
+start_time = time.perf_counter()
 
+print("Starting training...")
+
+with tqdm.tqdm(total=EPOCHS, desc="Training Progress") as pbar:
+    for epoch in range(EPOCHS + 1):
+        optimizer.zero_grad()
+        
+        # Compute losses
+        loss_pde = compute_pde_loss(model, x_int, y_int)
+        
+        u_b_pred = model(x_b, y_b)
+        loss_bc = torch.mean((u_b_pred - u_b_true)**2)
+        
+        # Total physics-informed loss (heavily weighting the boundary helps convergence)
+        total_loss = loss_pde + 10.0 * loss_bc
+        
+        total_loss.backward()
+        optimizer.step()
+        
+        if epoch % 500 == 0:
+            print(f"Epoch {epoch:4d} | Total Loss: {total_loss.item():.6f} | PDE Loss: {loss_pde.item():.6f} | BC Loss: {loss_bc.item():.6f}")
+        
+        pbar.update(1)
+
+end_time = time.perf_counter()
+print(f"Training completed in {end_time - start_time:.6f} seconds.")
 
 E_local = []
 def u(x, y):
     return (x**2 - 1) * (y**2 - 1)
 
+print(f"parameters: {sum(p.numel() for p in model.parameters())}")
 print("\n--- Verification ---")
 with tqdm.tqdm(total=160801, desc=f"Computing L2 Error") as pbar:
         for x in np.arange(-1, 1.005, 0.005):
