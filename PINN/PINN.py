@@ -42,7 +42,8 @@ def compute_pde_loss(model, x, y):
     u_yy = torch.autograd.grad(u_y, y, grad_outputs=torch.ones_like(u_y), create_graph=True)[0]
     
     # Target source term: f(x, y) = 2*(x^2 + y^2 - 2)
-    f = 2 * (x**2 + y**2 - 2)
+    #f = 2 * (x**2 + y**2 - 2)
+    f = 2*np.pi**2*np.sin(np.pi*x)*np.sin(np.py*y)
     
     # Residual of the Poisson equation: u_xx + u_yy - f = 0
     residual = u_xx + u_yy - f
@@ -103,7 +104,7 @@ print(f"Training completed in {end_time - start_time:.6f} seconds.")
 
 E_local = []
 def u(x, y):
-    return (x**2 - 1) * (y**2 - 1)
+    return np.sin(np.pi*x)*np.sin(np.pi*y)
 
 print(f"parameters: {sum(p.numel() for p in model.parameters())}")
 print("\n--- Verification ---")
